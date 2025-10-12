@@ -12,6 +12,7 @@
 #include <Jolt/Physics/Body/BodyType.h>
 #include <Jolt/Physics/Body/MassProperties.h>
 #include <Jolt/Physics/DeterminismLog.h>
+#include <Jolt/Physics/Snapshot/SnapshotStates.h>
 
 JPH_NAMESPACE_BEGIN
 
@@ -229,8 +230,14 @@ public:
 
 	/// Restoring state for replay
 	void					RestoreState(StateRecorder &inStream);
+	
+	void					SaveAlignedState(BlobBuilder &builder, MotionPropertiesState &state) const;
 
+	void					RestoreAlignedState(const MotionPropertiesState &state);
+	
 	static constexpr uint32	cInactiveIndex = uint32(-1);									///< Constant indicating that body is not active
+
+	constexpr static size_t	SleepTestSphereSize = 3;
 
 private:
 	friend class BodyManager;
@@ -268,7 +275,8 @@ private:
 #ifdef JPH_DOUBLE_PRECISION
 	Double3					mSleepTestOffset;												///< mSleepTestSpheres are relative to this offset to prevent floating point inaccuracies. Warning: Loaded using sLoadDouble3Unsafe which will read 8 extra bytes.
 #endif // JPH_DOUBLE_PRECISION
-	Sphere					mSleepTestSpheres[3];											///< Measure motion for 3 points on the body to see if it is resting: COM, COM + largest bounding box axis, COM + second largest bounding box axis
+
+	Sphere					mSleepTestSpheres[SleepTestSphereSize];							///< Measure motion for 3 points on the body to see if it is resting: COM, COM + largest bounding box axis, COM + second largest bounding box axis
 	float					mSleepTestTimer;												///< How long this body has been within the movement tolerance
 
 #ifdef JPH_ENABLE_ASSERTS

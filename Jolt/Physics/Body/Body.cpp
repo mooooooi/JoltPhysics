@@ -327,6 +327,40 @@ void Body::RestoreState(StateRecorder &inStream)
 	CalculateWorldSpaceBoundsInternal();
 }
 
+void Body::SaveAlignedState(BlobBuilder &builder, BodyState &state) const
+{
+	state.id = GetID();
+	state.isActive = IsActive();
+
+	mPosition.StoreFloat3(&state.position);
+	mRotation.StoreFloat4(&state.rotation);
+
+	JPH_ASSERT(!IsSoftBody());
+	if (mMotionProperties != nullptr)
+	{
+		mMotionProperties->SaveAlignedState(builder, state.motionProperties);
+	}
+}
+
+void Body::RestoreAlignedState(const BodyState &state)
+{
+	JPH_ASSERT(state.id == GetID());
+	
+	mPosition = Vec3(state.position);
+	mRotation = Quat(state.rotation);
+	
+	JPH_ASSERT(!IsSoftBody());
+	if (mMotionProperties != nullptr)
+	{
+		mMotionProperties->RestoreAlignedState(state.motionProperties);
+		
+		JPH_IF_ENABLE_ASSERTS(mMotionProperties->mCachedMotionType = mMotionType);
+	}
+	
+	// Initialize bounding box
+	CalculateWorldSpaceBoundsInternal();
+}
+
 BodyCreationSettings Body::GetBodyCreationSettings() const
 {
 	JPH_ASSERT(IsRigidBody());

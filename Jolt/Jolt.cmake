@@ -433,6 +433,9 @@ set(JOLT_PHYSICS_SRC_FILES
 	${JOLT_PHYSICS_ROOT}/TriangleSplitter/TriangleSplitterBinning.h
 	${JOLT_PHYSICS_ROOT}/TriangleSplitter/TriangleSplitterMean.cpp
 	${JOLT_PHYSICS_ROOT}/TriangleSplitter/TriangleSplitterMean.h
+	${JOLT_PHYSICS_ROOT}/Physics/Snapshot/SnapshotStates.h
+	${JOLT_PHYSICS_ROOT}/Physics/Snapshot/BlobBuilder.h
+	${JOLT_PHYSICS_ROOT}/Physics/Snapshot/BlobBuilder.cpp
 )
 
 if (ENABLE_OBJECT_STREAM)

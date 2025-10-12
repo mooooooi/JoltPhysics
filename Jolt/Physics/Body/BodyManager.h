@@ -5,6 +5,7 @@
 #pragma once
 
 #include <Jolt/Physics/Body/Body.h>
+#include <Jolt/Physics/Snapshot/SnapshotStates.h>
 #include <Jolt/Core/Mutex.h>
 #include <Jolt/Core/MutexArray.h>
 
@@ -215,6 +216,10 @@ public:
 	/// Save the state of a single body for replay
 	void							RestoreBodyState(Body &inBody, StateRecorder &inStream);
 
+	/// Saving the aligned state for crossplatform
+	void							SaveAlignedState(BlobBuilder &builder, BlobArray<BodyState> &bodyStates, const StateRecorderFilter *inFilter) const;
+
+	bool 							RestoreAlignedState(const BlobArray<BodyState> &bodyStates);
 #ifdef JPH_DEBUG_RENDERER
 	enum class EShapeColor
 	{

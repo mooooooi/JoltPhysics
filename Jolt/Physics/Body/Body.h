@@ -15,6 +15,7 @@
 #include <Jolt/Physics/Body/BodyID.h>
 #include <Jolt/Physics/Body/BodyAccess.h>
 #include <Jolt/Physics/Body/BodyType.h>
+#include <Jolt/Physics/Snapshot/SnapshotStates.h>
 #include <Jolt/Core/StringTools.h>
 
 JPH_NAMESPACE_BEGIN
@@ -388,6 +389,10 @@ public:
 	/// Restoring state for replay
 	void					RestoreState(StateRecorder &inStream);
 
+	void 					SaveAlignedState(BlobBuilder &builder, BodyState &state) const;
+	
+	void 					RestoreAlignedState(const BodyState &state);
+	
 	///@}
 
 	static constexpr uint32	cInactiveIndex = MotionProperties::cInactiveIndex;				///< Constant indicating that body is not active

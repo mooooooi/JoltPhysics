@@ -2768,4 +2768,71 @@ void PhysicsSystem::RestoreBodyState(Body &ioBody, StateRecorder &inStream)
 	mBroadPhase->NotifyBodiesAABBChanged(&id, 1);
 }
 
+void PhysicsSystem::SaveAlignedState(BlobBuilder &inBuilder, PhysicsSystemState &inState, EStateRecorderState inStateFlags, const StateRecorderFilter *inFilter) const
+{
+	JPH_PROFILE_FUNCTION();
+
+	inState.flags = inStateFlags;
+
+	if (uint8(inStateFlags) & uint8(EStateRecorderState::Global))
+	{
+		inState.global.previousStepDeltaTime = mPreviousStepDeltaTime;
+		mGravity.StoreFloat3(&inState.global.gravity);
+	}
+
+	if (uint8(inStateFlags) & uint8(EStateRecorderState::Bodies))
+		mBodyManager.SaveAlignedState(inBuilder, inState.bodies, inFilter);
+
+//	if (uint8(inStateFlags) & uint8(EStateRecorderState::Contacts))
+//		mContactManager.SaveState(inStream, inFilter);
+//
+//	if (uint8(inStateFlags) & uint8(EStateRecorderState::Constraints))
+//		mConstraintManager.SaveState(inStream, inFilter);
+}
+
+bool PhysicsSystem::RestoreAlignedState(const PhysicsSystemState &inState, const StateRecorderFilter *inFilter, bool isLastPart)
+{
+	JPH_PROFILE_FUNCTION();
+
+	EStateRecorderState flags = inState.flags;
+
+	if (uint8(flags) & uint8(EStateRecorderState::Global))
+	{
+		mPreviousStepDeltaTime = inState.global.previousStepDeltaTime;
+		mGravity = Vec3(inState.global.gravity);
+	}
+
+	if (uint8(flags) & uint8(EStateRecorderState::Bodies))
+	{
+		if (!mBodyManager.RestoreAlignedState(inState.bodies))
+			return false;
+
+		// Update bounding boxes for all bodies in the broadphase
+		if (isLastPart)
+		{
+			Array<BodyID> bodies;
+			for (const Body *b : mBodyManager.GetBodies())
+				if (BodyManager::sIsValidBodyPointer(b) && b->IsInBroadPhase())
+					bodies.push_back(b->GetID());
+			if (!bodies.empty())
+				mBroadPhase->NotifyBodiesAABBChanged(&bodies[0], (int)bodies.size());
+		}
+	}
+
+//	if (uint8(flags) & uint8(EStateRecorderState::Contacts))
+//	{
+//		if (!mContactManager.RestoreState(inStream, inFilter))
+//			return false;
+//	}
+//
+//	if (uint8(flags) & uint8(EStateRecorderState::Constraints))
+//	{
+//		if (!mConstraintManager.RestoreState(inStream))
+//			return false;
+//	}
+
+	return true;
+}
+
+
 JPH_NAMESPACE_END

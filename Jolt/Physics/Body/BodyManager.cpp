@@ -13,6 +13,7 @@
 #include <Jolt/Physics/SoftBody/SoftBodyCreationSettings.h>
 #include <Jolt/Physics/SoftBody/SoftBodyShape.h>
 #include <Jolt/Physics/StateRecorder.h>
+#include <Jolt/Physics/Snapshot/BlobBuilder.h>
 #include <Jolt/Core/StringTools.h>
 #include <Jolt/Core/QuickSort.h>
 #ifdef JPH_DEBUG_RENDERER
@@ -901,6 +902,85 @@ void BodyManager::RestoreBodyState(Body &ioBody, StateRecorder &inStream)
 		else
 			RemoveBodyFromActiveBodies(ioBody);
 	}
+}
+
+void BodyManager::SaveAlignedState(BlobBuilder &builder, BlobArray<BodyState> &bodyStates, const StateRecorderFilter *inFilter) const
+{
+
+	{
+		LockAllBodies();
+
+		// Determine which bodies to save
+		Array<const Body *> bodies;
+		bodies.reserve(mNumBodies);
+		for (const Body *b : mBodies)
+			if (sIsValidBodyPointer(b) && b->IsInBroadPhase() && (inFilter == nullptr || inFilter->ShouldSaveBody(*b)))
+				bodies.push_back(b);
+
+		// Write state of bodies
+		const auto num_bodies = bodies.size();
+		auto bodyStatesBuilder = builder.Allocate(bodyStates, num_bodies);
+		for (uint i = 0; i < num_bodies; i++)
+		{
+			bodies[i]->SaveAlignedState(builder, bodyStatesBuilder[i]);
+		}
+
+		UnlockAllBodies();
+	}
+
+}
+
+bool BodyManager::RestoreAlignedState(const BlobArray<BodyState>& bodyStates)
+{
+
+	BodyIDVector bodies_to_activate, bodies_to_deactivate;
+
+	{
+		LockAllBodies();
+
+		// Iterate over the stored bodies and restore their state
+		for (uint32 idx = 0; idx < bodyStates.size(); ++idx)
+		{
+			const BodyState &bodyState = bodyStates[idx];
+
+			Body *b = TryGetBody(bodyState.id);
+			if (b == nullptr)
+			{
+				JPH_ASSERT(false, "Restoring state for non-existing body");
+				UnlockAllBodies();
+				return false;
+			}
+
+			if (bodyState.isActive != b->IsActive())
+			{
+				if (bodyState.isActive)
+					bodies_to_activate.push_back(bodyState.id);
+				else
+					bodies_to_deactivate.push_back(bodyState.id);
+			}
+			b->RestoreAlignedState(bodyState);
+		}
+
+		UnlockAllBodies();
+	}
+
+	{
+		UniqueLock lock(mActiveBodiesMutex JPH_IF_ENABLE_ASSERTS(, this, EPhysicsLockTypes::ActiveBodiesList));
+
+		for (BodyID body_id : bodies_to_activate)
+		{
+			Body *body = TryGetBody(body_id);
+			AddBodyToActiveBodies(*body);
+		}
+
+		for (BodyID body_id : bodies_to_deactivate)
+		{
+			Body *body = TryGetBody(body_id);
+			RemoveBodyFromActiveBodies(*body);
+		}
+	}
+
+	return true;
 }
 
 #ifdef JPH_DEBUG_RENDERER

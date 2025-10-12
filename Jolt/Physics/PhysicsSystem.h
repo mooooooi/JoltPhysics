@@ -172,6 +172,12 @@ public:
 
 	/// Restoring state of a single body.
 	void						RestoreBodyState(Body &ioBody, StateRecorder &inStream);
+	
+	/// Saving state for replay
+	void						SaveAlignedState(BlobBuilder &inBuilder, PhysicsSystemState &inState, EStateRecorderState inStateFlags = EStateRecorderState::All, const StateRecorderFilter *inFilter = nullptr) const;
+
+	/// Restoring state for replay. Returns false if failed.
+	bool						RestoreAlignedState(const PhysicsSystemState &inState, const StateRecorderFilter *inFilter = nullptr, bool isLastPart = true);
 
 #ifdef JPH_DEBUG_RENDERER
 	// Drawing properties

@@ -89,4 +89,39 @@ void MotionProperties::RestoreState(StateRecorder &inStream)
 	inStream.Read(mAllowSleeping);
 }
 
+void MotionProperties::SaveAlignedState(BlobBuilder &builder, MotionPropertiesState &state) const
+{
+	// Only write properties that can change at runtime
+	mLinearVelocity.StoreFloat3(&state.linearVelocity);
+	mAngularVelocity.StoreFloat3(&state.angularVelocity);
+	state.force = mForce;
+	state.torque = mTorque;
+#ifdef JPH_DOUBLE_PRECISION
+	state.sleepTestOffset = mSleepTestOffset;
+#endif // JPH_DOUBLE_PRECISION
+	for (int i = 0; i < SleepTestSphereSize; i++)
+	{
+		state.sleepTestSpheres[i] = mSleepTestSpheres[i];
+	}
+	state.sleepTestTimer = mSleepTestTimer;
+	state.allowSleeping = mAllowSleeping;
+}
+
+void MotionProperties::RestoreAlignedState(const MotionPropertiesState &state)
+{
+	mLinearVelocity = Vec3(state.linearVelocity);
+	mAngularVelocity = Vec3(state.angularVelocity);
+	mForce = state.force;
+	mTorque = state.torque;
+#ifdef JPH_DOUBLE_PRECISION
+	mSleepTestOffset = state.sleepTestOffset;
+#endif // JPH_DOUBLE_PRECISION
+	for (int i = 0; i < SleepTestSphereSize; i++)
+	{
+		mSleepTestSpheres[i] = state.sleepTestSpheres[i];
+	}
+	mSleepTestTimer = state.sleepTestTimer;
+	mAllowSleeping = state.allowSleeping;
+}
+
 JPH_NAMESPACE_END
