@@ -4,6 +4,7 @@
 #include<Jolt/Math/Quat.h>
 #include<Jolt/Geometry/Sphere.h>
 #include<Jolt/Physics/StateRecorder.h>
+#include<optional>
 
 JPH_NAMESPACE_BEGIN
 
