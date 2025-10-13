@@ -103,11 +103,11 @@ void BlobBuilder::CreateBlobBytes(void* outBytes, size_t outByteCount)
         offsets[i + 1] = offsets[i] + mAllocations[i].size;
         sortedAllocations[i] = SortedIndex(mAllocations[i].p, i);
     }
-    std::sort(sortedAllocations.begin(), sortedAllocations.end(), SortedIndex::Compare);
+    QuickSort(sortedAllocations.begin(), sortedAllocations.end(), SortedIndex::Compare);
 
     for (int i = 0; i < mPatches.size(); ++i)
         sortedPatches[i] = SortedIndex(reinterpret_cast<char*>(mPatches[i].offsetPtr), i);
-    std::sort(sortedPatches.begin(), sortedPatches.end(), SortedIndex::Compare);
+    QuickSort(sortedPatches.begin(), sortedPatches.end(), SortedIndex::Compare);
 
     size_t dataSize = offsets[mAllocations.size()];
     JPH_ASSERT(outByteCount >= dataSize);
