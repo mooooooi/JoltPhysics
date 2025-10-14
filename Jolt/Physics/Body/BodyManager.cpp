@@ -914,7 +914,7 @@ void BodyManager::SaveAlignedState(BlobBuilder &builder, BlobArray<BodyState> &b
 		Array<const Body *> bodies;
 		bodies.reserve(mNumBodies);
 		for (const Body *b : mBodies)
-			if (sIsValidBodyPointer(b) && b->IsInBroadPhase() && (inFilter == nullptr || inFilter->ShouldSaveBody(*b)))
+			if (sIsValidBodyPointer(b) && b->IsInBroadPhase() && !b->IsSoftBody() && (inFilter == nullptr || inFilter->ShouldSaveBody(*b)))
 				bodies.push_back(b);
 
 		// Write state of bodies

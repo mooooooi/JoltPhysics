@@ -2783,9 +2783,9 @@ void PhysicsSystem::SaveAlignedState(BlobBuilder &inBuilder, PhysicsSystemState 
 	if (uint8(inStateFlags) & uint8(EStateRecorderState::Bodies))
 		mBodyManager.SaveAlignedState(inBuilder, inState.bodies, inFilter);
 
-//	if (uint8(inStateFlags) & uint8(EStateRecorderState::Contacts))
-//		mContactManager.SaveState(inStream, inFilter);
-//
+	if (uint8(inStateFlags) & uint8(EStateRecorderState::Contacts))
+		mContactManager.SaveAlignedState(inBuilder, inState.contacts, inFilter);
+
 //	if (uint8(inStateFlags) & uint8(EStateRecorderState::Constraints))
 //		mConstraintManager.SaveState(inStream, inFilter);
 }
@@ -2819,11 +2819,11 @@ bool PhysicsSystem::RestoreAlignedState(const PhysicsSystemState &inState, const
 		}
 	}
 
-//	if (uint8(flags) & uint8(EStateRecorderState::Contacts))
-//	{
-//		if (!mContactManager.RestoreState(inStream, inFilter))
-//			return false;
-//	}
+	if (uint8(flags) & uint8(EStateRecorderState::Contacts))
+	{
+		if (!mContactManager.RestoreAlignedState(inState.contacts, inFilter, isLastPart))
+			return false;
+	}
 //
 //	if (uint8(flags) & uint8(EStateRecorderState::Constraints))
 //	{

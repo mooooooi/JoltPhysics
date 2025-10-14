@@ -253,6 +253,9 @@ public:
 	/// Restoring state for replay. Returns false when failed.
 	bool						RestoreState(StateRecorder &inStream, const StateRecorderFilter *inFilter);
 
+	void						SaveAlignedState(BlobBuilder &inBuilder, ContactConstraintState &inState, const StateRecorderFilter *inFilter) const;
+
+	bool						RestoreAlignedState(const ContactConstraintState &inState, const StateRecorderFilter *inFilter, bool isLastPart);
 private:
 	/// Local space contact point, used for caching impulses
 	class CachedContactPoint
@@ -261,6 +264,8 @@ private:
 		/// Saving / restoring state for replay
 		void					SaveState(StateRecorder &inStream) const;
 		void					RestoreState(StateRecorder &inStream);
+		void					SaveAlignedState(CachedContactPointState& inState) const;
+		void					RestoreAlignedState(const CachedContactPointState& inState);
 
 		/// Local space positions on body 1 and 2.
 		/// Note: these values are read through sLoadFloat3Unsafe.
@@ -288,6 +293,8 @@ private:
 		/// Saving / restoring state for replay
 		void					SaveState(StateRecorder &inStream) const;
 		void					RestoreState(StateRecorder &inStream);
+		void					SaveAlignedState(BlobBuilder& builder, CachedManifoldState& state) const;
+		void					RestoreAlignedState(const CachedManifoldState& state);
 
 		/// Handle to next cached contact points in ManifoldCache::mCachedManifolds for the same body pair
 		uint32					mNextWithSameBodyPair;
@@ -395,6 +402,8 @@ private:
 		void					SaveState(StateRecorder &inStream, const StateRecorderFilter *inFilter) const;
 		bool					RestoreState(const ManifoldCache &inReadCache, StateRecorder &inStream, const StateRecorderFilter *inFilter);
 
+		void					SaveAlignedState(BlobBuilder &builder, ManifoldCacheState &state, const StateRecorderFilter *inFilter) const;
+		bool					RestoreAlignedState(const ManifoldCacheState &inState, const StateRecorderFilter *inFilter, bool isLastPart);
 	private:
 		/// Block size used when allocating new blocks in the contact cache
 		static constexpr uint32	cAllocatorBlockSize = 4096;

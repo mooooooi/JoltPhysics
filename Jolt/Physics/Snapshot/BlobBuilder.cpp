@@ -1,8 +1,9 @@
 #include <Jolt/Jolt.h>
 #include <Jolt/Physics/Snapshot/BlobBuilder.h>
 
-JPH_NAMESPACE_BEGIN
+#include "Jolt/Core/QuickSort.h"
 
+JPH_NAMESPACE_BEGIN
 BlobDataRef BlobBuilder::Allocate(size_t size, uint alignment)
 {
     if (size > mChunkSize)

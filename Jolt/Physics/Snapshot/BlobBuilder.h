@@ -9,6 +9,30 @@
 JPH_NAMESPACE_BEGIN
 
 template<typename T>
+class BlobPtr : NonCopyable
+{
+public:
+    BlobPtr() = default;
+
+    inline T & Value()
+    {
+        JPH_ASSERT(mOffsetPtr != 0);
+        return reinterpret_cast<char*>(&mOffsetPtr) + mOffsetPtr;
+    }
+
+    inline const T & Value() const
+    {
+        JPH_ASSERT(mOffsetPtr != 0);
+        return reinterpret_cast<const char*>(&mOffsetPtr) + mOffsetPtr;
+    }
+
+    inline int* GetUnsafeOffsetPtr() { return &mOffsetPtr; }
+
+private:
+    int mOffsetPtr;
+};
+
+template<typename T>
 class BlobArray : NonCopyable
 {
 public:

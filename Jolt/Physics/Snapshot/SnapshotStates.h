@@ -7,9 +7,11 @@
 #include<Jolt/Physics/StateRecorder.h>
 #include<Jolt/Physics/Snapshot/BlobBuilder.h>
 
-JPH_NAMESPACE_BEGIN
+#include "Jolt/Physics/Body/BodyPair.h"
+#include "Jolt/Physics/Collision/Shape/SubShapeIDPair.h"
 
-struct GlobalState
+JPH_NAMESPACE_BEGIN
+    struct GlobalState
 {
     float previousStepDeltaTime;
     Float3 gravity;
@@ -38,11 +40,56 @@ struct BodyState
     MotionPropertiesState motionProperties;
 };
 
+struct CachedContactPointState
+{
+    Float3 position1;
+    Float3 position2;
+    float nonPenetrationLambda;
+    float frictionLambda[2];
+};
+
+struct CachedManifoldState
+{
+    Float3 contactNormal;
+    BlobArray<CachedContactPointState> contactPoints;
+};
+
+struct ManifoldKeyValueState
+{
+    SubShapeIDPair key;
+    CachedManifoldState value;
+};
+
+struct CachedBodyPairState
+{
+    Float3 deltaPosition;
+    Float3 deltaRotation;
+    BlobArray<ManifoldKeyValueState> manifolds;
+};
+
+struct BodyPairKeyValueState
+{
+    BodyPair key;
+    CachedBodyPairState value;
+};
+
+struct ManifoldCacheState
+{
+    BlobArray<BodyPairKeyValueState> bodyPairs;
+    BlobArray<SubShapeIDPair> ccdManifolds;
+};
+
+struct ContactConstraintState
+{
+    ManifoldCacheState manifold;
+};
+
 struct PhysicsSystemState
 {
 	EStateRecorderState flags;
     GlobalState global;
     BlobArray<BodyState> bodies;
+    ContactConstraintState contacts;
 };
 
 

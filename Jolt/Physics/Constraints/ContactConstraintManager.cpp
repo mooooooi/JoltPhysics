@@ -213,6 +213,28 @@ void ContactConstraintManager::CachedContactPoint::RestoreState(StateRecorder &i
 	inStream.Read(mFrictionLambda);
 }
 
+void ContactConstraintManager::CachedContactPoint::SaveAlignedState(CachedContactPointState &inState) const
+{
+	inState.position1 = mPosition1;
+	inState.position2 = mPosition2;
+	inState.nonPenetrationLambda = mNonPenetrationLambda;
+	for (int i = 0; i < 2; i++)
+	{
+		inState.frictionLambda[i] = mFrictionLambda[i];
+	}
+}
+
+void ContactConstraintManager::CachedContactPoint::RestoreAlignedState(const CachedContactPointState &inState)
+{
+	mPosition1 = inState.position1;
+	mPosition2 = inState.position2;
+	mNonPenetrationLambda = inState.nonPenetrationLambda;
+	for (int i = 0; i < 2; i++)
+	{
+		mFrictionLambda[i] = inState.frictionLambda[i];
+	}
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 // ContactConstraintManager::CachedManifold
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -225,6 +247,28 @@ void ContactConstraintManager::CachedManifold::SaveState(StateRecorder &inStream
 void ContactConstraintManager::CachedManifold::RestoreState(StateRecorder &inStream)
 {
 	inStream.Read(mContactNormal);
+}
+
+void ContactConstraintManager::CachedManifold::SaveAlignedState(BlobBuilder &builder, CachedManifoldState &state) const
+{
+	state.contactNormal = mContactNormal;
+
+	auto contactPointsBuilder = builder.Allocate(state.contactPoints, mNumContactPoints);
+	for (uint32 i = 0; i < mNumContactPoints; i++)
+	{
+		mContactPoints[i].SaveAlignedState(contactPointsBuilder[i]);
+	}
+}
+
+void ContactConstraintManager::CachedManifold::RestoreAlignedState(const CachedManifoldState &state)
+{
+	mContactNormal = state.contactNormal;
+
+	mNumContactPoints = state.contactPoints.size();
+	for (uint32 i = 0; i < mNumContactPoints; i++)
+	{
+		mContactPoints[i].RestoreAlignedState(state.contactPoints[i]);
+	}
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -655,6 +699,178 @@ bool ContactConstraintManager::ManifoldCache::RestoreState(const ManifoldCache &
 #ifdef JPH_ENABLE_ASSERTS
 	// We don't finalize until the last part is restored
 	if (inStream.IsLastPart())
+		mIsFinalized = true;
+#endif
+
+	return success;
+}
+
+void ContactConstraintManager::ManifoldCache::SaveAlignedState(BlobBuilder &builder, ManifoldCacheState &state, const StateRecorderFilter *inFilter) const
+{
+	JPH_ASSERT(mIsFinalized);
+
+	// Get contents of cache
+	Array<const BPKeyValue *> all_bp;
+	GetAllBodyPairsSorted(all_bp);
+
+	// Determine which ones to save
+	Array<const BPKeyValue *> selected_bp;
+	if (inFilter == nullptr)
+		selected_bp = std::move(all_bp);
+	else
+	{
+		selected_bp.reserve(all_bp.size());
+		for (const BPKeyValue *bp_kv : all_bp)
+			if (inFilter->ShouldSaveContact(bp_kv->GetKey().mBodyA, bp_kv->GetKey().mBodyB))
+				selected_bp.push_back(bp_kv);
+	}
+
+	auto bodyParisBuilder = builder.Allocate(state.bodyPairs, selected_bp.size());
+	for (int i = 0; i < selected_bp.size(); ++i)
+	{
+		BodyPairKeyValueState &bp_kvs = bodyParisBuilder[i];
+		const BPKeyValue *bp_kv = selected_bp[i];
+
+		// Write body pair key
+		bp_kvs.key = bp_kv->GetKey();
+
+		// Write body pair
+		const CachedBodyPair &bp = bp_kv->GetValue();
+		bp_kvs.value.deltaPosition = bp.mDeltaPosition;
+		bp_kvs.value.deltaRotation = bp.mDeltaRotation;
+
+		// Get attached manifolds
+		Array<const MKeyValue *> all_m;
+		GetAllManifoldsSorted(bp, all_m);
+
+		// Write num manifolds
+		uint32 num_manifolds = uint32(all_m.size());
+		auto manifolds = builder.Allocate(bp_kvs.value.manifolds, num_manifolds);
+
+		// Write all manifolds
+		for (int j = 0; j < num_manifolds; j++)
+		{
+			ManifoldKeyValueState &m_kvs = manifolds[j];
+			const MKeyValue *m_kv = all_m[j];
+
+			// Write key
+			m_kvs.key = m_kv->GetKey();
+			const CachedManifold &cm = m_kv->GetValue();
+			JPH_ASSERT((cm.mFlags & (uint16)CachedManifold::EFlags::CCDContact) == 0);
+
+			cm.SaveAlignedState(builder, m_kvs.value);
+		}
+	}
+
+	// Get CCD manifolds
+	Array<const MKeyValue *> all_m;
+	GetAllCCDManifoldsSorted(all_m);
+
+	// Determine which ones to save
+	Array<const MKeyValue *> selected_m;
+	if (inFilter == nullptr)
+		selected_m = std::move(all_m);
+	else
+	{
+		selected_m.reserve(all_m.size());
+		for (const MKeyValue *m_kv : all_m)
+			if (inFilter->ShouldSaveContact(m_kv->GetKey().GetBody1ID(), m_kv->GetKey().GetBody2ID()))
+				selected_m.push_back(m_kv);
+	}
+
+	// Write all CCD manifold keys
+	uint32 num_manifolds = uint32(selected_m.size());
+	auto ccdManifoldsBuilder = builder.Allocate(state.ccdManifolds, num_manifolds);
+	for (uint32_t i = 0; i < num_manifolds; ++i)
+	{
+		ccdManifoldsBuilder[i] = selected_m[i]->GetKey();
+	}
+}
+
+bool ContactConstraintManager::ManifoldCache::RestoreAlignedState(const ManifoldCacheState &inState, const StateRecorderFilter *inFilter, bool isLastPart)
+{
+	JPH_ASSERT(!mIsFinalized);
+
+	bool success = true;
+
+	// Create a contact allocator for restoring the contact cache
+	ContactAllocator contact_allocator(GetContactAllocator());
+
+	// Read amount of body pairs
+	uint32 num_body_pairs = uint32(inState.bodyPairs.size());
+
+	// Read entire cache
+	for (uint32 i = 0; i < num_body_pairs; ++i)
+	{
+		const auto &body_pair_key = inState.bodyPairs[i].key;
+		const auto &bps = inState.bodyPairs[i].value;
+
+		// Check if we want to restore this contact
+		if (inFilter != nullptr && !inFilter->ShouldRestoreContact(body_pair_key.mBodyA, body_pair_key.mBodyB))
+			continue;
+
+		// Create new entry for this body pair
+		uint64 body_pair_hash = body_pair_key.GetHash();
+		BPKeyValue *bp_kv = Create(contact_allocator, body_pair_key, body_pair_hash);
+		if (bp_kv == nullptr)
+		{
+			// Out of cache space
+			success = false;
+			break;
+		}
+		CachedBodyPair &bp = bp_kv->GetValue();
+
+		// Read body pair
+		bp.mDeltaPosition = bps.deltaPosition;
+		bp.mDeltaRotation = bps.deltaRotation;
+
+		uint32 num_manifolds = uint32(bps.manifolds.size());
+
+		uint32 handle = ManifoldMap::cInvalidHandle;
+		for (uint32 j = 0; j < num_manifolds; ++j)
+		{
+			const auto &sub_shape_key = bps.manifolds[j].key;
+			const auto &cms = bps.manifolds[j].value;
+			uint64 sub_shape_key_hash = sub_shape_key.GetHash();
+
+			uint16 num_contact_points = uint16(cms.contactPoints.size());
+			// Read manifold
+			MKeyValue *m_kv = Create(contact_allocator, sub_shape_key, sub_shape_key_hash, num_contact_points);
+			if (m_kv == nullptr)
+			{
+				// Out of cache space
+				success = false;
+				break;
+			}
+			CachedManifold &cm = m_kv->GetValue();
+			cm.RestoreAlignedState(cms);
+			cm.mNextWithSameBodyPair = handle;
+			handle = ToHandle(m_kv);
+		}
+		bp.mFirstCachedManifold = handle;
+	}
+
+	uint32 num_manifolds = uint32(inState.ccdManifolds.size());
+	for (uint32 j = 0; j < num_manifolds; ++j)
+	{
+		const auto &sub_shape_key = inState.ccdManifolds[j];
+		if (inFilter != nullptr && !inFilter->ShouldRestoreContact(sub_shape_key.GetBody1ID(), sub_shape_key.GetBody2ID()))
+			continue;
+		// Create CCD manifold
+		uint64 sub_shape_key_hash = sub_shape_key.GetHash();
+		MKeyValue *m_kv = Create(contact_allocator, sub_shape_key, sub_shape_key_hash, 0);
+		if (m_kv == nullptr)
+		{
+			// Out of cache space
+			success = false;
+			break;
+		}
+		CachedManifold &cm = m_kv->GetValue();
+		cm.mFlags |= (uint16)CachedManifold::EFlags::CCDContact;
+	}
+
+#ifdef JPH_ENABLE_ASSERTS
+	if (isLastPart)
 		mIsFinalized = true;
 #endif
 
@@ -1784,5 +2000,25 @@ bool ContactConstraintManager::RestoreState(StateRecorder &inStream, const State
 
 	return success;
 }
+
+void ContactConstraintManager::SaveAlignedState(BlobBuilder& inBuilder, ContactConstraintState &inState, const StateRecorderFilter *inFilter) const
+{
+	mCache[mCacheWriteIdx ^ 1].SaveAlignedState(inBuilder, inState.manifold, inFilter);
+}
+
+bool ContactConstraintManager::RestoreAlignedState(const ContactConstraintState &inState, const StateRecorderFilter *inFilter, bool isLastPart)
+{
+	bool success = mCache[mCacheWriteIdx].RestoreAlignedState(inState.manifold, inFilter, isLastPart);
+
+	if (isLastPart)
+	{
+		mCacheWriteIdx ^= 1;
+		mCache[mCacheWriteIdx].Clear();
+	}
+
+	return success;
+}
+
+
 
 JPH_NAMESPACE_END
