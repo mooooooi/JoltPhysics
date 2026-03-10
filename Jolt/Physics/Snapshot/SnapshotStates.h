@@ -34,7 +34,6 @@ struct MotionPropertiesState
 struct BodyState
 {
     BodyID id;
-    bool isActive;
     Float3 position;
     Float4 rotation;
     MotionPropertiesState motionProperties;

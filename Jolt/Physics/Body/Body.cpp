@@ -330,7 +330,6 @@ void Body::RestoreState(StateRecorder &inStream)
 void Body::SaveAlignedState(BlobBuilder &builder, BodyState &state) const
 {
 	state.id = GetID();
-	state.isActive = IsActive();
 
 	mPosition.StoreFloat3(&state.position);
 	mRotation.StoreFloat4(&state.rotation);
