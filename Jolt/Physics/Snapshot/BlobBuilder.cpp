@@ -10,7 +10,8 @@ BlobDataRef BlobBuilder::Allocate(size_t size, uint alignment)
     {
         size = AlignUp(size, 16);
         size_t allocIndex = mAllocations.size();
-        char *mem = static_cast<char*>(AlignedAllocate(size, alignment));
+        char *mem = static_cast<char*>(AlignedAllocate(size, std::max(alignment, (uint)alignof(std::max_align_t))));
+        JPH_ASSERT(mem != nullptr);
         memset(mem, 0, size);
         mAllocations.push_back(BlobAllocation(size, mem));
         return BlobDataRef(allocIndex, 0);
