@@ -7,8 +7,11 @@
 #include<Jolt/Physics/StateRecorder.h>
 #include<Jolt/Physics/Snapshot/BlobBuilder.h>
 
-#include "Jolt/Physics/Body/BodyPair.h"
-#include "Jolt/Physics/Collision/Shape/SubShapeIDPair.h"
+#include <Jolt/Physics/Body/BodyPair.h>
+#include <Jolt/Physics/Body/MotionType.h>
+#include <Jolt/Physics/Collision/Shape/SubShapeIDPair.h>
+#include <Jolt/Physics/Character/CharacterID.h>
+#include <Jolt/Physics/Character/CharacterGroundState.h>
 
 JPH_NAMESPACE_BEGIN
     struct GlobalState
@@ -92,6 +95,49 @@ struct PhysicsSystemState
     ContactConstraintState contacts;
 };
 
+struct CharacterBaseState
+{
+    EGroundState groundState;
+    BodyID groundBodyID;
+    SubShapeID groundBodySubShapeID;
+    Float3 groundPosition;
+    Float3 groundNormal;
+    Float3 groundVelocity;
+};
+
+struct CharacterVirtualContactKeyState
+{
+    BodyID bodyB;
+    CharacterID characterIDB;
+    SubShapeID subShapeIDB;
+};
+
+struct CharacterVirtualContactState
+{
+    CharacterVirtualContactKeyState key;
+    Float3 position;
+    Float3 linearVelocity;
+    Float3 contactNormal;
+    Float3 surfaceNormal;
+    float distance;
+    float fraction;
+    EMotionType motionTypeB;
+    bool isSensorB;
+    bool hadCollision;
+    bool wasDiscarded;
+    bool canPushCharacter;
+};
+
+struct CharacterVirtualState
+{
+    CharacterBaseState base;
+    Float3 position;
+    Float4 rotation;
+    Float3 linearVelocity;
+    float lastDeltaTime;
+    bool maxHitsExceeded;
+    BlobArray<CharacterVirtualContactState> contacts;
+};
 
 
 JPH_NAMESPACE_END

@@ -10,6 +10,9 @@
 #include <Jolt/Physics/Collision/Shape/Shape.h>
 #include <Jolt/Physics/Collision/Shape/SubShapeID.h>
 #include <Jolt/Physics/Collision/PhysicsMaterial.h>
+#include <Jolt/Physics/Snapshot/BlobBuilder.h>
+#include <Jolt/Physics/Snapshot/SnapshotStates.h>
+#include <Jolt/Physics/Character/CharacterGroundState.h>
 
 JPH_NAMESPACE_BEGIN
 
@@ -80,14 +83,6 @@ public:
 	/// Get the current shape that the character is using.
 	const Shape *						GetShape() const										{ return mShape; }
 
-	enum class EGroundState
-	{
-		OnGround,						///< Character is on the ground and can move freely.
-		OnSteepGround,					///< Character is on a slope that is too steep and can't climb up any further. The caller should start applying downward velocity if sliding from the slope is desired.
-		NotSupported,					///< Character is touching an object, but is not supported by it and should fall. The GetGroundXXX functions will return information about the touched object.
-		InAir,							///< Character is in the air and is not touching anything.
-	};
-
 	/// Debug function to convert enum values to string
 	static const char *					sToString(EGroundState inState);
 
@@ -123,6 +118,9 @@ public:
 	// Saving / restoring state for replay
 	virtual void						SaveState(StateRecorder &inStream) const;
 	virtual void						RestoreState(StateRecorder &inStream);
+	
+	virtual void						SaveAlignedState(CharacterBaseState& state) const;
+	virtual void						RestoreAlignedState(const CharacterBaseState& state);
 
 protected:
 	// Cached physics system

@@ -50,6 +50,18 @@ BlobAllocation BlobBuilder::AllocateNewChunk()
         AlignChunk(mCurrentChunkInIndex.value());
     }
 
+    // Try to reuse an existing allocation with size == 0 (available after Reset)
+    size_t nextIndex = mCurrentChunkInIndex.has_value() ? mCurrentChunkInIndex.value() + 1 : 0;
+    while (nextIndex < mAllocations.size())
+    {
+        if (mAllocations[nextIndex].size == 0)
+        {
+            mCurrentChunkInIndex = nextIndex;
+            return mAllocations[nextIndex];
+        }
+        ++nextIndex;
+    }
+
     mCurrentChunkInIndex = mAllocations.size();
     auto alloc = BlobAllocation(
         0,
@@ -66,6 +78,14 @@ void BlobBuilder::AlignChunk(size_t chunkIndex)
     chunk.size = AlignUp(chunk.size, 16);
     mAllocations[chunkIndex] = chunk;
     memset(chunk.p + oldSize, 0, chunk.size - oldSize);
+}
+
+void BlobBuilder::Reset()
+{
+    mPatches.clear();
+    for (auto & alloc : mAllocations)
+        alloc.size = 0;
+    mCurrentChunkInIndex = mAllocations.empty() ? std::nullopt : std::optional<size_t>(0);
 }
 
 void* BlobBuilder::AllocationToPointer(const BlobDataRef blobDataRef)

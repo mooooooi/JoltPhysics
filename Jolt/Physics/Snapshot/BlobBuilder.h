@@ -185,6 +185,8 @@ public:
         return BlobBuilderArray<T>(static_cast<T*>(AllocationToPointer(alloc)), length);
     }
 
+    void Reset();
+
     size_t GetBlobByteCount();
     void CreateBlobBytes(void* outBytes, size_t outByteCount);
 

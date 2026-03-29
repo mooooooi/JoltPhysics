@@ -1307,8 +1307,8 @@ Vec3 CharacterVirtual::CancelVelocityTowardsSteepSlopes(Vec3Arg inDesiredVelocit
 {
 	// If we're not pushing against a steep slope, return the desired velocity
 	// Note: This is important as WalkStairs overrides the ground state to OnGround when its first check fails but the second succeeds
-	if (mGroundState == CharacterVirtual::EGroundState::OnGround
-		|| mGroundState == CharacterVirtual::EGroundState::InAir)
+	if (mGroundState == EGroundState::OnGround
+		|| mGroundState == EGroundState::InAir)
 		return inDesiredVelocity;
 
 	Vec3 desired_velocity = inDesiredVelocity;
@@ -1808,11 +1808,25 @@ void CharacterVirtual::ContactKey::SaveState(StateRecorder &inStream) const
 	inStream.Write(mSubShapeIDB);
 }
 
+void CharacterVirtual::ContactKey::SaveAlignedState(CharacterVirtualContactKeyState &state) const
+{
+	state.bodyB = mBodyB;
+	state.characterIDB = mCharacterIDB;
+	state.subShapeIDB = mSubShapeIDB;
+}
+
 void CharacterVirtual::ContactKey::RestoreState(StateRecorder &inStream)
 {
 	inStream.Read(mBodyB);
 	inStream.Read(mCharacterIDB);
 	inStream.Read(mSubShapeIDB);
+}
+
+void CharacterVirtual::ContactKey::RestoreAlignedState(const CharacterVirtualContactKeyState &state)
+{
+	mBodyB = state.bodyB;
+	mCharacterIDB = state.characterIDB;
+	mSubShapeIDB = state.subShapeIDB;
 }
 
 void CharacterVirtual::Contact::SaveState(StateRecorder &inStream) const
@@ -1833,6 +1847,24 @@ void CharacterVirtual::Contact::SaveState(StateRecorder &inStream) const
 	// Cannot store pointers to character B, user data and material
 }
 
+void CharacterVirtual::Contact::SaveAlignedState(CharacterVirtualContactState &state) const
+{
+	ContactKey::SaveAlignedState(state.key);
+
+	mPosition.StoreFloat3(&state.position);
+	mLinearVelocity.StoreFloat3(&state.linearVelocity);
+	mContactNormal.StoreFloat3(&state.contactNormal);
+	mSurfaceNormal.StoreFloat3(&state.surfaceNormal);
+	state.distance = mDistance;
+	state.fraction = mFraction;
+	state.motionTypeB = mMotionTypeB;
+	state.isSensorB = mIsSensorB;
+	state.hadCollision = mHadCollision;
+	state.wasDiscarded = mWasDiscarded;
+	state.canPushCharacter = mCanPushCharacter;
+	// Cannot store pointers to character B, user data and material
+}
+
 void CharacterVirtual::Contact::RestoreState(StateRecorder &inStream)
 {
 	ContactKey::RestoreState(inStream);
@@ -1848,6 +1880,26 @@ void CharacterVirtual::Contact::RestoreState(StateRecorder &inStream)
 	inStream.Read(mHadCollision);
 	inStream.Read(mWasDiscarded);
 	inStream.Read(mCanPushCharacter);
+	mCharacterB = nullptr; // Cannot restore character B
+	mUserData = 0; // Cannot restore user data
+	mMaterial = PhysicsMaterial::sDefault; // Cannot restore material
+}
+
+void CharacterVirtual::Contact::RestoreAlignedState(const CharacterVirtualContactState &state)
+{
+	ContactKey::RestoreAlignedState(state.key);
+
+	mPosition = Vec3(state.position);
+	mLinearVelocity = Vec3(state.linearVelocity);
+	mContactNormal = Vec3(state.contactNormal);
+	mSurfaceNormal = Vec3(state.surfaceNormal);
+	mDistance = state.distance;
+	mFraction = state.fraction;
+	mMotionTypeB = state.motionTypeB;
+	mIsSensorB = state.isSensorB;
+	mHadCollision = state.hadCollision;
+	mWasDiscarded = state.wasDiscarded;
+	mCanPushCharacter = state.canPushCharacter;
 	mCharacterB = nullptr; // Cannot restore character B
 	mUserData = 0; // Cannot restore user data
 	mMaterial = PhysicsMaterial::sDefault; // Cannot restore material
@@ -1874,6 +1926,32 @@ void CharacterVirtual::SaveState(StateRecorder &inStream) const
 			c.SaveState(inStream);
 }
 
+void CharacterVirtual::SaveAlignedState(BlobBuilder &builder, CharacterVirtualState &state) const
+{
+	CharacterBase::SaveAlignedState(state.base);
+
+	mPosition.StoreFloat3(&state.position);
+	mRotation.StoreFloat4(&state.rotation);
+	mLinearVelocity.StoreFloat3(&state.linearVelocity);
+	state.lastDeltaTime = mLastDeltaTime;
+	state.maxHitsExceeded = mMaxHitsExceeded;
+
+	// Store contacts that had collision, we're using it at the beginning of the step in CancelVelocityTowardsSteepSlopes
+	uint32 num_contacts = 0;
+	for (const Contact &c : mActiveContacts)
+		if (c.mHadCollision)
+			++num_contacts;
+
+	auto contactsBuilder = builder.Allocate(state.contacts, num_contacts);
+	int contactIdx = 0;
+
+	for (const Contact &c : mActiveContacts)
+		if (c.mHadCollision)
+		{
+			c.SaveAlignedState(contactsBuilder[contactIdx++]);
+		}
+}
+
 void CharacterVirtual::RestoreState(StateRecorder &inStream)
 {
 	CharacterBase::RestoreState(inStream);
@@ -1895,6 +1973,20 @@ void CharacterVirtual::RestoreState(StateRecorder &inStream)
 	mActiveContacts.resize(num_contacts);
 	for (Contact &c : mActiveContacts)
 		c.RestoreState(inStream);
+}
+
+void CharacterVirtual::RestoreAlignedState(const CharacterVirtualState &state)
+{
+	CharacterBase::RestoreAlignedState(state.base);
+
+	mPosition = Vec3(state.position);
+	mRotation = Quat(state.rotation);
+	mLinearVelocity = Vec3(state.linearVelocity);
+	mLastDeltaTime = state.lastDeltaTime;
+	mMaxHitsExceeded = state.maxHitsExceeded;
+	mActiveContacts.resize(state.contacts.size());
+	for (size_t i = 0; i < state.contacts.size(); ++i)
+		mActiveContacts[i].RestoreAlignedState(state.contacts[i]);
 }
 
 CharacterVirtualSettings CharacterVirtual::GetCharacterVirtualSettings() const

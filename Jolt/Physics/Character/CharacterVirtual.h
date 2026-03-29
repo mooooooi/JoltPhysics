@@ -12,6 +12,8 @@
 #include <Jolt/Physics/Collision/ObjectLayer.h>
 #include <Jolt/Physics/Collision/TransformedShape.h>
 #include <Jolt/Core/STLTempAllocator.h>
+#include <Jolt/Physics/Snapshot/BlobBuilder.h>
+#include <Jolt/Physics/Snapshot/SnapshotStates.h>
 
 JPH_NAMESPACE_BEGIN
 
@@ -431,6 +433,9 @@ public:
 	virtual void						SaveState(StateRecorder &inStream) const override;
 	virtual void						RestoreState(StateRecorder &inStream) override;
 
+	virtual void 						SaveAlignedState(BlobBuilder &builder, CharacterVirtualState &state) const;
+	virtual void						RestoreAlignedState(const CharacterVirtualState &state);
+
 #ifdef JPH_DEBUG_RENDERER
 	static inline bool					sDrawConstraints = false;								///< Draw the current state of the constraints for iteration 0 when creating them
 	static inline bool					sDrawWalkStairs = false;								///< Draw the state of the walk stairs algorithm
@@ -473,6 +478,9 @@ public:
 		void							SaveState(StateRecorder &inStream) const;
 		void							RestoreState(StateRecorder &inStream);
 
+		void 							SaveAlignedState(CharacterVirtualContactKeyState &state) const;
+		void							RestoreAlignedState(const CharacterVirtualContactKeyState &state);
+
 		BodyID							mBodyB;													///< ID of body we're colliding with (if not invalid)
 		CharacterID						mCharacterIDB;											///< Character we're colliding with (if not invalid)
 		SubShapeID						mSubShapeIDB;											///< Sub shape ID of body or character we're colliding with
@@ -484,6 +492,9 @@ public:
 		// Saving / restoring state for replay
 		void							SaveState(StateRecorder &inStream) const;
 		void							RestoreState(StateRecorder &inStream);
+
+		void							SaveAlignedState(CharacterVirtualContactState &state) const;
+		void							RestoreAlignedState(const CharacterVirtualContactState &state);
 
 		RVec3							mPosition;												///< Position where the character makes contact
 		Vec3							mLinearVelocity;										///< Velocity of the contact point

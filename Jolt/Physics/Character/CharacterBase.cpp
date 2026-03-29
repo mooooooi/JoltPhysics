@@ -44,6 +44,16 @@ void CharacterBase::SaveState(StateRecorder &inStream) const
 	// Can't save user data (may be a pointer) and material
 }
 
+void CharacterBase::SaveAlignedState(CharacterBaseState& state) const
+{
+	state.groundState = mGroundState;
+	state.groundBodyID = mGroundBodyID;
+	state.groundBodySubShapeID = mGroundBodySubShapeID;
+	mGroundPosition.StoreFloat3(&state.groundPosition);
+	mGroundNormal.StoreFloat3(&state.groundNormal);
+	mGroundVelocity.StoreFloat3(&state.groundVelocity);
+}
+
 void CharacterBase::RestoreState(StateRecorder &inStream)
 {
 	inStream.Read(mGroundState);
@@ -52,6 +62,18 @@ void CharacterBase::RestoreState(StateRecorder &inStream)
 	inStream.Read(mGroundPosition);
 	inStream.Read(mGroundNormal);
 	inStream.Read(mGroundVelocity);
+	mGroundUserData = 0; // Cannot restore user data
+	mGroundMaterial = PhysicsMaterial::sDefault; // Cannot restore material
+}
+
+void CharacterBase::RestoreAlignedState(const CharacterBaseState& state)
+{
+	mGroundState = state.groundState;
+	mGroundBodyID = state.groundBodyID;
+	mGroundBodySubShapeID = state.groundBodySubShapeID;
+	mGroundPosition = Vec3(state.groundPosition);
+	mGroundNormal = Vec3(state.groundNormal);
+	mGroundVelocity = Vec3(state.groundVelocity);
 	mGroundUserData = 0; // Cannot restore user data
 	mGroundMaterial = PhysicsMaterial::sDefault; // Cannot restore material
 }
